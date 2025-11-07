@@ -2,6 +2,7 @@ import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { HTTPResponse, parseRequest } from './http/index.js';
 
 const PORT: number = 8083;
 const HOST: string = '127.0.0.1';
@@ -52,26 +53,27 @@ const server: net.Server = net.createServer((socket: net.Socket) => {
  */
 function processRequest(requestString: string, socket: net.Socket): void {
     
-    // Parsing manual da requisição
-    const [requestLine, ..._] = requestString.split('\n');
-    const [method, path] = requestLine ? requestLine.trim().split(' ') : [];
-
-    console.log(`[REQ] ${method || '??'} ${path || '??'}`);
+    const request = parseRequest(requestString)
+    console.log(`[REQ] ${request.method || '??'} ${request.path || '??'}`);
     
-    if (method === 'GET' && path === '/') {
+    if (request.method === 'GET' && request.path === '/') {
         try {
             
             const fileContent: Buffer = fs.readFileSync(INDEX_FILE);
-            
-            const statusLine: string = 'HTTP/1.1 200 OK\r\n';
-            const headers: string = 
-                'Content-Type: text/html\r\n' +
-                `Content-Length: ${fileContent.length}\r\n` +
-                'Connection: close\r\n\r\n';
 
-            socket.write(statusLine);
-            socket.write(headers);
-            socket.write(fileContent);
+            const response = HTTPResponse.Builder
+            .statusCode(200)
+            .httpVersion('1.1')
+            .reasonPhrase('OK')
+            .header('Content-Type', 'text/html')
+            .header('Content-Length', `${fileContent.length}`)
+            .header('Connection', 'close')
+            .payload(fileContent.toString())
+            .build()
+
+            socket.write(response.statusLine());
+            socket.write(response.header());
+            socket.write(response.payload);
 
         } catch (error) {
             console.error('[ERRO] Erro ao ler arquivo:', (error as Error).message);

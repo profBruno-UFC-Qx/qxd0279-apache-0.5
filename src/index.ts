@@ -2,14 +2,12 @@ import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { HTTPResponse, parseRequest } from './http/index.js';
+import { HTTPResponseBuilder, parseRequest } from './http/index.js';
 
 const PORT: number = 8083;
 const HOST: string = '127.0.0.1';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const INDEX_FILE: string = path.join(__dirname, 'index.html');
 
 const server: net.Server = net.createServer((socket: net.Socket) => {
     
@@ -56,30 +54,42 @@ function processRequest(requestString: string, socket: net.Socket): void {
     const request = parseRequest(requestString)
     console.log(`[REQ] ${request.method || '??'} ${request.path || '??'}`);
     
-    if (request.method === 'GET' && request.path === '/') {
-        try {
+    if (request.method === 'GET') {
+
+        const requestedPath = request.path === '/' ? '/index.html' : request.path;
+        if (requestedPath.indexOf('..') !== -1) {
+            socket.write(new HTTPResponseBuilder()
+            .forbidden()
+            .build().message
+            )
+        } else {
+
+            const filePath = path.join(__dirname, '../public', requestedPath);
+            try {
+    
+                const fileContent: Buffer = fs.readFileSync(filePath);
+    
+                const response = new HTTPResponseBuilder()
+                .statusCode(200)
+                .httpVersion('1.1')
+                .reasonPhrase('OK')
+                .header('Content-Type', 'text/html')
+                .header('Content-Length', `${fileContent.length}`)
+                .header('Connection', 'close')
+                .payload(fileContent.toString())
+                .build()
+    
+                socket.write(response.message)
             
-            const fileContent: Buffer = fs.readFileSync(INDEX_FILE);
-
-            const response = HTTPResponse.Builder
-            .statusCode(200)
-            .httpVersion('1.1')
-            .reasonPhrase('OK')
-            .header('Content-Type', 'text/html')
-            .header('Content-Length', `${fileContent.length}`)
-            .header('Connection', 'close')
-            .payload(fileContent.toString())
-            .build()
-
-            socket.write(response.statusLine());
-            socket.write(response.header());
-            socket.write(response.payload);
-
-        } catch (error) {
-            console.error('[ERRO] Erro ao ler arquivo:', (error as Error).message);
-            const errorResponse: string = 'HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nFile Not Found';
-            socket.write(errorResponse);
+                
+    
+            } catch (error) {
+                console.error('[ERRO] Erro ao ler arquivo:', (error as Error).message);
+                const errorResponse: string = 'HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nFile Not Found';
+                socket.write(errorResponse);
+            }
         }
+
     } else {
         const notImplemented: string = 'HTTP/1.1 501 Not Implemented\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n501 Not Implemented';
         socket.write(notImplemented);

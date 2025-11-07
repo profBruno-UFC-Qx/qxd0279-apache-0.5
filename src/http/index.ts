@@ -14,7 +14,7 @@ type PayloadHeares = "Content-Length" | "Content-Range"
 
 type HttpHeaders = Record<RequestHeaders | ResponseHeaders | PayloadHeares, string>
 
-type emptyLine = '\r\n'
+const emptyLine = '\r\n'
 
 type HTTPRequest = RequestLine & {
    headers?: { 
@@ -57,7 +57,7 @@ export function parseRequest(data: string): HTTPRequest {
 }
 
 
-export class HTTPResponse {
+class HTTPResponse {
   constructor(
     private statusCode: number,
     private reasonPhrase: string,
@@ -65,30 +65,30 @@ export class HTTPResponse {
     private headers?: { 
     [K in keyof HttpHeaders]? : string
    },
-    public payload: string = "") {}
+    private payload: string = "") {}
 
-  static get Builder() {
-    return new HTTPResponseBuilder();
-  }
-
-  statusLine(): string {
+  private get statusLine(): string {
     return `${this.httpVersion} ${this.statusCode} ${this.reasonPhrase}\r\n`
   }
 
-  header(): string {
+  private get header(): string {
     let result = ""
     if(this.headers) {
       result = Object.entries(this.headers).reduce((p, [k, v]) => `${p}\r\n${k}:${v}`, "");
     }
     return `${result}\r\n`
   }
+
+  get message(): string {
+    return `${this.statusLine}${this.header}${this.payload}`
+  }
 }
 
-class HTTPResponseBuilder {
+export class HTTPResponseBuilder {
   private _statusCode!: number;
   private _reasonPhrase!: string;
   private _httpVersion!: string;
-  private _payload?: string;
+  private _payload: string = emptyLine;
   private _headers?: { 
     [K in keyof HttpHeaders]? : string
    } = {}
@@ -117,6 +117,13 @@ class HTTPResponseBuilder {
     if(this._headers) {
       this._headers[header] = value
     }
+    return this
+  }
+
+  forbidden(version: string = '1.1'): this {
+    this._statusCode = 403
+    this._reasonPhrase = 'Forbiden'
+    this._httpVersion = version
     return this
   }
 

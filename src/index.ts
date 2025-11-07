@@ -24,10 +24,10 @@ const server: net.Server = net.createServer((socket: net.Socket) => {
 
   console.log(`[LOG] Cliente conectado: ${remoteAddress}:${remotePort}`);
 
-  // Buffer para armazenar os dados da requisição
+  
   let requestData: string = "";
 
-  // O evento 'data' é disparado quando o cliente (navegador) envia dados.
+  
   socket.on("data", (data: Buffer) => {
     requestData += data.toString("utf8");
     console.log(`[LOG] Dados recebidos ${JSON.stringify(requestData)}`);
@@ -97,20 +97,16 @@ function processRequest(requestString: string, socket: net.Socket): void {
           }
         }
       } else {
-        console.log(JSON.stringify(new HTTPResponseBuilder().notFound().build().message))
         socket.write(new HTTPResponseBuilder().notFound().build().message)
       }
     }
   } else {
-    const notImplemented: string =
-      "HTTP/1.1 501 Not Implemented\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\n501 Not Implemented";
-    socket.write(notImplemented);
+    socket.write(new HTTPResponseBuilder().serverError().build().message);
   }
 
   socket.end();
 }
 
-// Inicia o servidor
 server.listen(PORT, HOST, () => {
   console.log(
     `\n*** Servidor Web Primitivo (TCP/TS) rodando em http://${HOST}:${PORT} ***`

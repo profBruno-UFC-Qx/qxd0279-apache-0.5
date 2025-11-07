@@ -136,6 +136,15 @@ export class HTTPResponseBuilder {
     return this
   }
 
+  serverError(version: string = '1.1'): this {
+    this._statusCode = 500
+    this._reasonPhrase = 'Internal Server Error'
+    this.httpVersion(version)
+    this.header('Content-Type', 'text/plain')
+    this.header('Connection', 'close')
+    return this
+  }
+
   build(): HTTPResponse {
     return new HTTPResponse(this._statusCode, this._reasonPhrase, this._httpVersion, this._headers ,this._payload);
   }

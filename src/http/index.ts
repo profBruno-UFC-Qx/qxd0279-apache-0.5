@@ -74,7 +74,7 @@ class HTTPResponse {
   private get header(): string {
     let result = ""
     if(this.headers) {
-      result = Object.entries(this.headers).reduce((p, [k, v]) => `${p}\r\n${k}:${v}`, "");
+      result = Object.entries(this.headers).reduce((p, [k, v]) => `${p}${k}:${v}\r\n`, "");
     }
     return `${result}\r\n`
   }
@@ -88,7 +88,7 @@ export class HTTPResponseBuilder {
   private _statusCode!: number;
   private _reasonPhrase!: string;
   private _httpVersion!: string;
-  private _payload: string = emptyLine;
+  private _payload?: string;
   private _headers?: { 
     [K in keyof HttpHeaders]? : string
    } = {}
@@ -123,7 +123,16 @@ export class HTTPResponseBuilder {
   forbidden(version: string = '1.1'): this {
     this._statusCode = 403
     this._reasonPhrase = 'Forbiden'
-    this._httpVersion = version
+    this.httpVersion(version)
+    return this
+  }
+
+  notFound(version: string = '1.1'): this {
+    this._statusCode = 404
+    this._reasonPhrase = 'Not Found'
+    this.httpVersion(version)
+    this.header('Content-Type', 'text/plain')
+    this.header('Connection', 'close')
     return this
   }
 

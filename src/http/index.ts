@@ -1,6 +1,10 @@
-import strict from "node:assert/strict"
+
 const methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "CONNECT", "TRACE", "OPTIONS"] as const
 type HttpMethod = typeof methods[number]
+
+function isValidMethod(m: string): m is HttpMethod {
+  return methods.includes(m as HttpMethod)
+}
 
 type RequestLine = {
   method: HttpMethod,
@@ -12,20 +16,17 @@ type RequestHeaders = "Host" | "User-Agent" | "Accept" | "Accept-Language" | "Ac
 type ResponseHeaders = "Content-Type" | "Content-Encoding" | "Date" | "Keep-Alive"| "Server" | "Set-Cookie"
 type PayloadHeares = "Content-Length" | "Content-Range"
 
-type HttpHeaders = Record<RequestHeaders | ResponseHeaders | PayloadHeares, string>
+
+type HttpHeaders = Partial<Record<RequestHeaders | ResponseHeaders | PayloadHeares, string>>
 
 const emptyLine = '\r\n'
 
 type HTTPRequest = RequestLine & {
-   headers?: { 
-    [K in keyof HttpHeaders]? : string
-   },
+   headers?: HttpHeaders
    payload?: string
 }
 
-function isValidMethod(m: string): m is HttpMethod {
-  return methods.includes(m as HttpMethod)
-}
+
 
 export function parseRequest(data: string): HTTPRequest {
   const request = data.split('\n');
@@ -33,7 +34,7 @@ export function parseRequest(data: string): HTTPRequest {
   const [method, path, version] = requestLine ? requestLine.trim().split(' ') : [];
 
   if(method && isValidMethod(method) && path && version) {
-    const headers: {[K in keyof HttpHeaders]? : string } = {}
+    const headers: HttpHeaders = {}
     for(const line of request.slice(1)) {
       if(line && line.trim()) {
         const [ header, headerValue] = line.split(':')
@@ -62,9 +63,7 @@ class HTTPResponse {
     private statusCode: number,
     private reasonPhrase: string,
     private httpVersion: string,
-    private headers?: { 
-    [K in keyof HttpHeaders]? : string
-   },
+    private headers?: HttpHeaders,
     private payload: string = "") {}
 
   private get statusLine(): string {
@@ -89,9 +88,7 @@ export class HTTPResponseBuilder {
   private _reasonPhrase!: string;
   private _httpVersion!: string;
   private _payload?: string;
-  private _headers?: { 
-    [K in keyof HttpHeaders]? : string
-   } = {}
+  private _headers?: HttpHeaders = {}
 
   statusCode(code: number): this {
     this._statusCode = code;

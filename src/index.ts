@@ -57,6 +57,7 @@ const server: net.Server = net.createServer((socket: net.Socket) => {
  */
 function processRequest(requestString: string, socket: net.Socket): void {
   const request = parseRequest(requestString);
+
   console.log(`[REQ] ${request.method || "??"} ${request.path || "??"}`);
 
   if (request.method === "GET") {
